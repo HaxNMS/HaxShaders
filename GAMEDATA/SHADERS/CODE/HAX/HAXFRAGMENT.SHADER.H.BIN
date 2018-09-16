@@ -10,71 +10,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-
 //-----------------------------------------------------------------------------
 //      Compilation defines 
 
-
-
-#ifdef _F20_PARALLAXMAP
-    #define _F03_NORMALMAP
+#ifndef D_FRAGMENT
+#define D_FRAGMENT
 #endif
 
-#if defined( _F25_ROUGHNESS_MASK ) || defined( _F41_DETAIL_DIFFUSE ) || defined( _F42_DETAIL_NORMAL ) || defined( _F24_AOMAP ) || defined( _F40_SUBSURFACE_MASK ) || defined( _F54_COLOURMASK )
-    #define D_MASKS
-#endif
-
-#if ( defined( _F15_WIND ) || defined( _F19_BILLBOARD ) ) && !defined( D_DEPTHONLY ) && !defined( D_DEPTH_CLEAR ) && !defined( _F12_BATCHED_BILLBOARD ) && !defined( _F44_IMPOSTER )
-    #define D_OUTPUT_MOTION_VECTORS
-#endif
-
-#if ( defined( _F31_DISPLACEMENT ) && !defined( D_DEPTHONLY ) && !defined( D_DEPTH_CLEAR ) )
-    #define D_OUTPUT_MOTION_VECTORS
-#endif
-
-#if defined( _F01_DIFFUSEMAP ) || defined( _F03_NORMALMAP ) || defined( D_IMPOSTERMASKS ) || defined(D_MASKS)
-    #define D_TEXCOORDS
-#endif
-
-#define D_USES_WORLD_POSITION
-
-#ifndef _F03_NORMALMAP
-    #if defined( _F04_ENVMAP ) || !defined( _F07_UNLIT )
-        #define D_USES_VERTEX_NORMAL
-    #endif
-#endif
-
-#if (defined( _F58_USE_CENTRAL_NORMAL ) && !defined( D_DEPTHONLY )) || defined( _F60_ACUTE_ANGLE_FADE ) || defined( _F36_DOUBLESIDED )
-    #define D_USES_VERTEX_NORMAL
-#endif
-
-#if defined( _F42_DETAIL_NORMAL ) || defined( _F41_DETAIL_DIFFUSE )
-    #define D_DETAIL
-#endif
-
-#if defined( _F02_SKINNED ) 
-    #define D_SKINNING_UNIFORMS
-#endif
-
-#if !defined( D_DEFER ) || defined( D_DEFERRED_DECAL ) || defined( D_OUTPUT_MOTION_VECTORS ) || defined( D_DEPTHONLY )
-    #define D_USE_SCREEN_POSITION
-#endif
-
-
-#if defined( D_IMPOSTER_COLOUR ) || defined( D_IMPOSTER_NORMAL ) || defined( D_IMPOSTER_MASK )
-#define D_IMPOSTER
-#endif
-
-#if !defined( D_IMPOSTER )
-#define D_FADE
-#endif
-
+//#define D_USES_VERTEX_NORMAL
 
 //-----------------------------------------------------------------------------
 //      Include files
-
-#include "Common/Defines.shader.h"
-#include "Common/CommonUniforms.shader.h"
 
 #include "Hax/HaxCommon.h"
 
@@ -110,7 +56,7 @@
 //-----------------------------------------------------------------------------
 DECLARE_INPUT
 
-    IN_SCREEN_POSITION
+    INPUT_SCREEN_POSITION
 
     INPUT( vec4, mTexCoordsVec4,            TEXCOORD0 )
 
@@ -122,15 +68,11 @@ DECLARE_INPUT
     INPUT( vec4, mProjectedTexCoordsVec4,   TEXCOORD2 )
 #endif
 
-//#ifdef D_USES_WORLD_POSITION
-#if defined( D_DEPTHONLY )
-    INPUT_NOINTERP( vec4, mWorldPositionVec3_mfSpare,        TEXCOORD3 )
-#else
+#ifdef D_USES_WORLD_POSITION
     INPUT( vec4, mWorldPositionVec3_mfSpare,        TEXCOORD3 )
 #endif
-//#endif
 
-#if !defined( _F01_DIFFUSEMAP ) || defined( _F22_TRANSPARENT_SCALAR )
+#if !defined( _F01_DIFFUSEMAP )
     INPUT( vec4,   mMaterialVec4,           TEXCOORD4 )
 #endif
 
@@ -152,12 +94,8 @@ DECLARE_INPUT
     INPUT( vec4, mPrevTexCoordsVec4,        TEXCOORD8 )
 #endif
 
-#if defined( D_OUTPUT_MOTION_VECTORS ) && defined( D_INSTANCE ) 
-    INPUT_NOINTERP( float, mfShearMotionLength,   TEXCOORD9 )
-#endif
-
 #if !defined( D_DEFER ) && !defined( _F07_UNLIT )
-    INPUT_NOINTERP( mat3,  mUpMatrixMat3,        TEXCOORD10 )
+    flat INPUT( mat3,  mUpMatrixMat3,        TEXCOORD10 )
 #endif
 
 //#if defined( _F44_IMPOSTER )
@@ -178,13 +116,9 @@ DECLARE_INPUT
 
 
 #ifdef D_OUTPUT_MOTION_VECTORS
-    INPUT( vec4,   mPrevScreenPosition,      TEXCOORD21 )
+    INPUT( vec4,   mPrevScreenPosition,      TEXCOORD15 )
 #endif
     
-#endif
-
-#ifdef D_USE_SCREEN_POSITION
-    INPUT( vec4, mScreenSpacePositionVec4,  TEXCOORD15 )
 #endif
 
 #ifdef _F37_RECOLOUR
@@ -192,12 +126,9 @@ DECLARE_INPUT
     INPUT( vec4,   mPaletteColour2Vec4,     TEXCOORD17 )
 #endif
 
-    INPUT_NOINTERP( float, mfFadeValueForInstance, TEXCOORD22 )
+    INPUT( vec4,   mScreenSpacePositionVec4, TEXCOORD21 )
 
-#ifdef D_INSTANCE
-    // TODO, merge this into one attribute.
-    INPUT_NOINTERP( vec4, mLodIndexVec4, TEXCOORD23 )
-#endif
+    flat INPUT( vec3, mfFadeValueForInstance_mfLodIndex_mfShearMotionLength, TEXCOORD22 )
 
     INPUT_FRONTFACING
 
@@ -243,11 +174,7 @@ GetDecalTexCoords(
     out vec3                    lWorldPositionVec3 )
 {
     vec3 lTexCoords;    
-    vec2 lGBufferCoords = ( lScreenSpacePositionVec4.xy / lScreenSpacePositionVec4.w ) * 0.5 + 0.5;
-
-#ifdef D_PLATFORM_ORBIS
-    lGBufferCoords.y = 1.0 - lGBufferCoords.y;
-#endif
+    vec2 lGBufferCoords = SCREENSPACE_AS_RENDERTARGET_UVS(( lScreenSpacePositionVec4.xy / lScreenSpacePositionVec4.w ) * 0.5 + 0.5);
 
     // Deferred Pos is in view space
     float lfDepth      = FastDenormaliseDepth( lPerFrameUniforms.gClipPlanesVec4, DecodeDepthFromColour( texture2D( lTexture, lGBufferCoords ) ) );
@@ -294,7 +221,7 @@ GetDecalTangentSpaceMatrix(
     View[1] = lCameraMat4[1].xyz;
     View[2] = lCameraMat4[2].xyz;
 
-#ifdef D_PLATFORM_ORBIS
+#ifndef D_PLATFORM_OPENGL
     tangentToView[0] = MUL( -tangent, View );
     tangentToView[1] = MUL( binormal, View );
     tangentToView[2] = MUL( -normal , View );
@@ -312,7 +239,7 @@ GetCotangentFrame( vec3 lPositionVec3, vec3 lViewPosition, vec2 uv )
 {    
     vec3 ddxWp = dFdx( lPositionVec3 );
 
-#ifdef D_PLATFORM_ORBIS
+#ifndef D_PLATFORM_OPENGL
     vec3 ddyWp = -dFdy( lPositionVec3 );
 #else
     vec3 ddyWp = dFdy( lPositionVec3 );
@@ -350,10 +277,10 @@ GetGrassColour(
 {
    vec3 lTexturePosition = lWorldPositionVec3 - lCommonUniforms.gPlanetPositionVec4.xyz;
 
-    vec4  lfNoiseSample  = texture3DLod( lCustomUniforms.gPerlin3D, lTexturePosition * lCustomUniforms.gTileBlendScalesVec4.x, 0.0 );
+    vec4  lfNoiseSample  = texture3DLod( SAMPLER_GETLOCAL(lCustomUniforms, gPerlin3D), lTexturePosition * lCustomUniforms.gTileBlendScalesVec4.x, 0.0 );
     float lfPatch1       = saturate( ( ( lfNoiseSample.r + lfNoiseSample.g + lfNoiseSample.b + lfNoiseSample.a ) / 4.0 ) ) * 2.0 - 1.0;
 
-    lfNoiseSample        = texture3DLod( lCustomUniforms.gPerlin3D, lTexturePosition * lCustomUniforms.gTileBlendScalesVec4.y, 0.0 );
+    lfNoiseSample        = texture3DLod( SAMPLER_GETLOCAL(lCustomUniforms, gPerlin3D), lTexturePosition * lCustomUniforms.gTileBlendScalesVec4.y, 0.0 );
     float lfPatch2       = saturate( ( ( lfNoiseSample.r + lfNoiseSample.g + lfNoiseSample.b + lfNoiseSample.a ) / 4.0 ) ) * 2.0 - 1.0;
 
     float lfPatch        = lfPatch1 + lfPatch2 * lCustomUniforms.gTileBlendScalesVec4.z;
@@ -392,7 +319,7 @@ GetGrassColour(
 ///     @return     Nothing.
 ///
 //-----------------------------------------------------------------------------
-#if ( defined( _F47_WRITE_LOG_Z ) && defined( D_USING_LOGDEPTH ) ) || defined(D_DEPTH_CLEAR)
+#if ( defined( _F47_WRITE_LOG_Z ) && defined( D_USING_LOGDEPTH ) ) || defined( D_DEPTH_CLEAR )
 FRAGMENT_MAIN_COLOUR_DEPTH_SRT
 #else
 #if defined( D_DEPTHONLY )
@@ -421,20 +348,12 @@ FRAGMENT_MAIN_COLOUR_SRT
         #else
         vec4 lTexCoords = IN( mTexCoordsVec4 );
         #endif
-        
-        
-#if defined( D_USE_SCREEN_POSITION ) && !defined( _F59_SCREENSPACE_FADE )
+            
         CheckFade(
-            SAMPLER2DPARAM( lUniforms.mpCustomPerMaterial->gFadeNoiseMap ),
+            SAMPLER2DPARAM_SRT( lUniforms.mpCustomPerMaterial, gFadeNoiseMap ),
             IN( mScreenSpacePositionVec4 ),
-            IN( mfFadeValueForInstance ) );
-#else
-        
-        CheckFadeUber(
-            SAMPLER2DPARAM( lUniforms.mpCustomPerMaterial->gFadeNoiseMap ),
-            lTexCoords,
-            IN( mfFadeValueForInstance) );
-#endif
+            IN( mfFadeValueForInstance_mfLodIndex_mfShearMotionLength ).x,
+            lUniforms.mpPerFrame->gFrameBufferSizeVec4.xy );
     }
     #endif
 
@@ -450,8 +369,29 @@ FRAGMENT_MAIN_COLOUR_SRT
     ///
     //-----------------------------------------------------------------------------
     vec4  lColourVec4;
-    vec3  lNormalVec3 = vec3( 0.0, 1.0, 0.0 );
-    vec3  lWorldPositionVec3 = IN( mWorldPositionVec3_mfSpare ).xyz;
+    vec3  lNormalVec3         = vec3( 0.0, 1.0, 0.0 );
+#ifdef D_USES_WORLD_POSITION
+    vec3  lWorldPositionVec3  = IN( mWorldPositionVec3_mfSpare ).xyz;
+#endif
+
+#ifdef _F63_DISSOLVE
+    float lDissolveEdge = 2.0f;
+    if( lUniforms.mpCustomPerMaterial->gDissolveDataVec4.w != 0.0f )
+    {
+        float dissolveDist = abs( dot( lUniforms.mpCustomPerMaterial->gDissolveDataVec4.xyz, lWorldPositionVec3 ) ) - abs( lUniforms.mpCustomPerMaterial->gDissolveDataVec4.w );
+
+        if( ( lUniforms.mpCustomPerMaterial->gDissolveDataVec4.w < 0.0f && dissolveDist < 0.0f ) || ( lUniforms.mpCustomPerMaterial->gDissolveDataVec4.w >= 0.0f && dissolveDist >= 0.0f ) )
+        {
+            lDissolveEdge = abs( dissolveDist ) / 0.05f;
+
+            if( lDissolveEdge > 1.0f )
+            {
+                discard;
+            }
+        }
+    }
+#endif
+
     vec4  lPrevScreenPosition = vec4( 0.0, 0.0, 0.0, 0.0 );
     float lLowAlpha   = 1.0;
     float lHighAlpha  = 1.0;
@@ -473,7 +413,7 @@ FRAGMENT_MAIN_COLOUR_SRT
             lTexCoordsVec4 = GetDecalTexCoords( 
                                 DEREF_PTR( lUniforms.mpPerFrame ),
                                 DEREF_PTR( lUniforms.mpCommonPerMesh ),
-                                SAMPLER2DPARAM( lUniforms.mpCustomPerMaterial->gBufferMap ),
+                                SAMPLER2DPARAM_SRT( lUniforms.mpCustomPerMaterial,gBufferMap ),
                                 IN( mScreenSpacePositionVec4 ),
                                 lWorldPositionVec3 ).xyxy;
         }
@@ -490,10 +430,10 @@ FRAGMENT_MAIN_COLOUR_SRT
     #ifdef _F01_DIFFUSEMAP
     {
         #ifdef _F55_MULTITEXTURE
-                lColourVec4 = texture2DArray(lUniforms.mpCustomPerMaterial->gDiffuseMap, vec3(lTexCoordsVec4.xy, lfMultiTextureIndex));
+                lColourVec4 = texture2DArray( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gDiffuseMap ), vec3(lTexCoordsVec4.xy, lfMultiTextureIndex));
                 //lColourVec4 = vec4(1.0, 0.0, 0.0, 1.0);
         #else
-                lColourVec4 = texture2D(lUniforms.mpCustomPerMaterial->gDiffuseMap, lTexCoordsVec4.xy);
+                lColourVec4 = texture2D( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gDiffuseMap ), lTexCoordsVec4.xy);
         #endif 
 
         #if  !defined( _F07_UNLIT ) && defined( _F39_METALLIC_MASK )
@@ -524,9 +464,9 @@ FRAGMENT_MAIN_COLOUR_SRT
     #ifdef D_MASKS
     //{
         #ifdef _F55_MULTITEXTURE
-            vec4 lMasks = texture2DArray(lUniforms.mpCustomPerMaterial->gMasksMap, vec3(lTexCoordsVec4.xy, lfMultiTextureIndex) );
+            vec4 lMasks = texture2DArray( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gMasksMap ), vec3(lTexCoordsVec4.xy, lfMultiTextureIndex) );
         #else
-            vec4 lMasks = texture2D(lUniforms.mpCustomPerMaterial->gMasksMap, lTexCoordsVec4.xy);
+            vec4 lMasks = texture2D( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gMasksMap ), lTexCoordsVec4.xy);
         #endif
     //}
     #endif
@@ -590,7 +530,7 @@ FRAGMENT_MAIN_COLOUR_SRT
     //{
     vec4 lDiffuse2Vec4;
 
-        lDiffuse2Vec4 = texture2D( lUniforms.mpCustomPerMaterial->gDiffuse2Map, lTexCoordsVec4.zw );
+        lDiffuse2Vec4 = texture2D( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gDiffuse2Map ), lTexCoordsVec4.zw );
     
     #ifndef _F17_MULTIPLYDIFFUSE2MAP
         {
@@ -663,18 +603,22 @@ FRAGMENT_MAIN_COLOUR_SRT
  
     #ifdef _F22_TRANSPARENT_SCALAR
     {
-        // Transparency scalar comes from float in Material
-        lColourVec4.a *= IN( mMaterialVec4 ).a;
+        lColourVec4.a *= lUniforms.mpCustomPerMaterial->gMaterialColourVec4.a;
     }
     #endif
 
     // Discard fully transparent pixels
     #if defined( _F09_TRANSPARENT ) || defined( _F22_TRANSPARENT_SCALAR ) || defined( _F11_ALPHACUTOUT )
     {
-        if( lColourVec4.a < kfAlphaThreshold )
+
+        #if !defined(D_ZEQUALS)
         {
-            discard;
+            if( lColourVec4.a < kfAlphaThreshold )
+            {
+                discard;
+            }
         }
+        #endif  
 
         #ifdef _F11_ALPHACUTOUT
         {
@@ -692,16 +636,17 @@ FRAGMENT_MAIN_COLOUR_SRT
 
     if( lfNdotCam < 0.5 )
     {
-        CheckFadeUber(
-            SAMPLER2DPARAM( lUniforms.mpCustomPerMaterial->gFadeNoiseMap ),
-            IN( mTexCoordsVec4 ),
-            lfNdotCam * 2.0 );
+        CheckFade(
+            SAMPLER2DPARAM_SRT( lUniforms.mpCustomPerMaterial,gFadeNoiseMap ),
+            IN( mScreenSpacePositionVec4 ),
+            lfNdotCam * 2.0,
+            lUniforms.mpPerFrame->gFrameBufferSizeVec4.xy );
     }
 #endif
 
 #if defined( D_DEPTHONLY )
 
-#if !defined( D_PLATFORM_ORBIS )
+#if defined( D_PLATFORM_OPENGL )
     FRAGMENT_COLOUR  = vec4( 0.0 );
 #endif
 
@@ -722,7 +667,7 @@ FRAGMENT_MAIN_COLOUR_SRT
         lfImageIndex = mix( lfImageIndex, lUniforms.mpCustomPerMesh->gCustomParams02Vec4.z + (lfImageIndex - (10.0 - lUniforms.mpCustomPerMesh->gCustomParams02Vec4.w)), lfIsMultiplyImage );
 
         float lfDetailScale         = mix( lUniforms.mpCustomPerMesh->gCustomParams02Vec4.x, lUniforms.mpCustomPerMesh->gCustomParams02Vec4.y, lfIsBlendImage );
-        vec4  lDetailNormalVec4     = texture2DArray( lUniforms.mpCustomPerMaterial->gDetailNormalMap, vec3((lTexCoordsVec4.xy * lfDetailScale), lfImageIndex ) );
+        vec4  lDetailNormalVec4     = texture2DArray( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gDetailNormalMap ), vec3((lTexCoordsVec4.xy * lfDetailScale), lfImageIndex ) );
 
         float lfBlendSize = (step( 0.5, 1.0 - lMasks.b ) * 0.4) + 0.1;
         float lfBlendHeightMin = clamp( 1.0 - lDetailNormalVec4.r, 0.05, 0.95 );
@@ -730,7 +675,7 @@ FRAGMENT_MAIN_COLOUR_SRT
 
         #if defined( _F41_DETAIL_DIFFUSE ) || defined( _F39_METALLIC_MASK ) || defined( _F35_GLOW_MASK )
         {
-            vec4   lDetailDiffuseVec4 = texture2DArray( lUniforms.mpCustomPerMaterial->gDetailDiffuseMap, vec3((lTexCoordsVec4.xy * lfDetailScale), lfImageIndex ) ); 
+            vec4   lDetailDiffuseVec4 = texture2DArray( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gDetailDiffuseMap ), vec3((lTexCoordsVec4.xy * lfDetailScale), lfImageIndex ) ); 
 
             #ifdef _F41_DETAIL_DIFFUSE
             {
@@ -771,7 +716,7 @@ FRAGMENT_MAIN_COLOUR_SRT
     ///
     //-----------------------------------------------------------------------------
     vec3 lFaceNormalVec3;
-    #if defined( _F36_DOUBLESIDED ) && !defined( D_IMPOSTER_NORMAL)
+    #if defined( _F36_DOUBLESIDED )
     {
         vec3 lEyeVec3 = normalize( lUniforms.mpPerFrame->gViewPositionVec3 - lWorldPositionVec3 );
 
@@ -799,13 +744,13 @@ FRAGMENT_MAIN_COLOUR_SRT
         #endif
         
         #if defined( _F44_IMPOSTER )
-            vec4 lTexColour = texture2DLod( lUniforms.mpCustomPerMaterial->gNormalMap, lTexCoordsVec4.xy, 1.0 );
-            vec3 lNormalTexVec3 = normalize(lTexColour.xyz * 2.0 - 1.0);
+            vec4 lTexColour = texture2DLod( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gNormalMap ), lTexCoordsVec4.xy, 1.0 );
+            vec3 lNormalTexVec3 = -normalize(lTexColour.xyz * 2.0 - 1.0);
         #else
             #ifdef _F55_MULTITEXTURE
-                    vec4 lTexColour = texture2DArray( lUniforms.mpCustomPerMaterial->gNormalMap, vec3(lTexCoordsVec4.xy, lfMultiTextureIndex ));
+                    vec4 lTexColour = texture2DArray( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gNormalMap ), vec3(lTexCoordsVec4.xy, lfMultiTextureIndex ));
             #else
-                    vec4 lTexColour = texture2D( lUniforms.mpCustomPerMaterial->gNormalMap, lTexCoordsVec4.xy );
+                    vec4 lTexColour = texture2D( SAMPLER_GETMAP( lUniforms.mpCustomPerMaterial,gNormalMap ), lTexCoordsVec4.xy );
             #endif 
         
         vec3 lNormalTexVec3 = DecodeNormalMap( lTexColour );
@@ -847,14 +792,27 @@ FRAGMENT_MAIN_COLOUR_SRT
         }
         #endif
 
-        #if defined( _F36_DOUBLESIDED ) && !defined( D_IMPOSTER_NORMAL)
+        #if defined( _F36_DOUBLESIDED )
 
-            lTangentSpaceMat[ 1 ] = cross( lFaceNormalVec3, lTangentSpaceMat[ 0 ] ) * IN( mWorldPositionVec3_mfSpare ).w;
-            lTangentSpaceMat[ 2 ] = lFaceNormalVec3;
+            #ifdef _F18_UVTILES // Tree with flat leaves which use multiple textures have different lighting
+                lTangentSpaceMat[ 1 ] = cross( lFaceNormalVec3, lTangentSpaceMat[ 0 ] ) * IN( mWorldPositionVec3_mfSpare ).w;
+                lTangentSpaceMat[ 2 ] = lFaceNormalVec3;
+            #else
+
+                vec3 lEyeVec3 = normalize( lUniforms.mpPerFrame->gViewPositionVec3 - lWorldPositionVec3 );
+
+                mat3 lCotangentMat = GetCotangentFrame( lWorldPositionVec3, lUniforms.mpPerFrame->gViewPositionVec3, lTexCoordsVec4.xy );
+
+                if( dot( IN( mTangentSpaceNormalVec3 ), lEyeVec3 ) < 0.0 )
+                {
+                    lTangentSpaceMat = lCotangentMat;
+                }
+            #endif
 
         #endif
 
-        lNormalVec3 = normalize( MUL( lTangentSpaceMat, lNormalVec3 ) );            
+        lNormalVec3 = normalize( MUL( lTangentSpaceMat, lNormalVec3 ) ); 
+           
     }
     #endif
 
@@ -870,38 +828,54 @@ FRAGMENT_MAIN_COLOUR_SRT
 
     #ifndef _F07_UNLIT
     {
-        #ifdef _F25_ROUGHNESS_MASK
-        {
-            lfRoughness = lMasks.g;
+        #ifndef _F44_IMPOSTER
 
-            #ifdef D_DETAIL
+            #ifdef _F25_ROUGHNESS_MASK
             {
-                lfRoughness  = mix( lfRoughness, lDetailNormalVec4.b,               lfIsBlendImage    * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
-                lfRoughness  = mix( lfRoughness, lDetailNormalVec4.b * lfRoughness, lfIsMultiplyImage * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
+                lfRoughness = lMasks.g;
+
+                #ifdef D_DETAIL
+                {
+                    lfRoughness  = mix( lfRoughness, lDetailNormalVec4.b,               lfIsBlendImage    * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
+                    lfRoughness  = mix( lfRoughness, lDetailNormalVec4.b * lfRoughness, lfIsMultiplyImage * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
+                }
+                #endif
+
+                lfRoughness = 1.0 - lfRoughness;
             }
             #endif
 
-            lfRoughness = 1.0 - lfRoughness;
-        }
+            lfRoughness *= lUniforms.mpCustomPerMaterial->gMaterialParamsVec4.x;
+
+        #else
+        
+            lfRoughness = lMasks.g;
+
         #endif
 
-        lfRoughness *= lUniforms.mpCustomPerMaterial->gMaterialParamsVec4.x;
+        #ifndef _F44_IMPOSTER
 
-        #ifdef _F39_METALLIC_MASK
-        {
-            lfMetallic = lHighAlpha;
-
-            #ifdef D_DETAIL
+            #ifdef _F39_METALLIC_MASK
             {
-                lfMetallic = mix( lfMetallic, lDetailNormalVec4.b,               lfIsBlendImage    * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
-                lfMetallic = mix( lfMetallic, lDetailNormalVec4.b * lfRoughness, lfIsMultiplyImage * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
+                lfMetallic = lHighAlpha;
+
+                #ifdef D_DETAIL
+                {
+                    lfMetallic = mix( lfMetallic, lDetailNormalVec4.b,               lfIsBlendImage    * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
+                    lfMetallic = mix( lfMetallic, lDetailNormalVec4.b * lfRoughness, lfIsMultiplyImage * smoothstep( lfBlendHeightMin, lfBlendHeightMax, lMasks.b ) );
+                }
+                #endif        
             }
-            #endif        
-        }
-        #else 
-        {
-            lfMetallic = lUniforms.mpCustomPerMaterial->gMaterialParamsVec4.z;
-        }
+            #else 
+            {
+                lfMetallic = lUniforms.mpCustomPerMaterial->gMaterialParamsVec4.z;
+            }
+            #endif
+
+        #else
+
+            lfMetallic = lMasks.b;
+
         #endif
 
         #ifdef _F40_SUBSURFACE_MASK
@@ -924,7 +898,7 @@ FRAGMENT_MAIN_COLOUR_SRT
     #endif
 
     float lfGlow = 0.0;
-    #ifdef _F34_GLOW
+    #if defined( _F34_GLOW ) && !defined( D_NO_GLOW )
     {
         #if defined( _F35_GLOW_MASK ) && !defined( _F09_TRANSPARENT )
         {
@@ -960,6 +934,13 @@ FRAGMENT_MAIN_COLOUR_SRT
 
     int liMaterialID = 0;
 
+    #ifdef _F44_IMPOSTER
+        if( lMasks.a > 0.5 )
+        {
+            liMaterialID = D_CLAMPAMBIENT;
+        }
+    #endif
+
     #ifdef _F10_NORECEIVESHADOW
         liMaterialID |= D_NORECEIVESHADOW;
     #endif
@@ -991,7 +972,7 @@ FRAGMENT_MAIN_COLOUR_SRT
     #endif
 
     #if defined( D_OUTPUT_MOTION_VECTORS ) && defined( D_INSTANCE )
-        if( IN( mfShearMotionLength ) > 0.0 )
+        if( IN( mfFadeValueForInstance_mfLodIndex_mfShearMotionLength ).z > 0.0 )
         {
             liMaterialID |= D_CLAMP_AA;
         }
@@ -1014,9 +995,32 @@ FRAGMENT_MAIN_COLOUR_SRT
     // in the shader we can tell whether to render normally or debug. (see mLodIndexVec4 in unberfragment and vertex).
 
 
-    int liLodIndex = int( IN( mLodIndexVec4 ).x );
+    int liLodIndex = int( IN( mfFadeValueForInstance_mfLodIndex_mfShearMotionLength ).y );
     lColourVec4 = liLodIndex < 10 ? lColourVec4 : gaDebugLodColours[ liLodIndex-10 ];
 #endif
+
+/*#if defined( _F36_DOUBLESIDED ) && !defined( D_IMPOSTER_NORMAL )
+    {
+        vec3 lEyeVec3 = normalize( lUniforms.mpPerFrame->gViewPositionVec3 - lWorldPositionVec3 );
+
+        vec3 ddxWp           = dFdx( lWorldPositionVec3 );
+        vec3 ddyWp           = dFdy( lWorldPositionVec3 );
+        lFaceNormalVec3      = normalize( cross( ddyWp, ddxWp ) );
+
+        if( dot( IN( mTangentSpaceNormalVec3 ), lEyeVec3 ) > 0.0 )
+        {
+            lColourVec4.rgb = vec3( 1.0, 0.0, 0.0 );
+        }
+        else
+        {
+            lColourVec4.rgb = vec3( 0.0, 1.0, 0.0 );
+        }
+    }
+#endif*/
+
+
+    //lColourVec4.rgb = lNormalVec3 * 0.5 + vec3( 0.5 );
+
 
     WriteOutput(
         lOutColours0Vec4,
@@ -1038,19 +1042,22 @@ FRAGMENT_MAIN_COLOUR_SRT
 #ifdef D_USE_SCREEN_POSITION   
         IN( mScreenSpacePositionVec4 ).xyzw ,
 #else
-        vec4(0.0),
+        float2vec4(0.0),
 #endif
 #ifdef D_OUTPUT_MOTION_VECTORS   
         lPrevScreenPosition,
 #else
-        vec4( 0.0 ),
+        float2vec4( 0.0 ),
 #endif
 #if !defined( D_DEFER ) && !defined( _F07_UNLIT )
         IN( mUpMatrixMat3 ) ,
+        SAMPLER2DPARAM_SRT(lUniforms.mpCustomPerMaterial,gDualPMapBack),
+        SAMPLER2DPARAM_SRT(lUniforms.mpCustomPerMaterial,gDualPMapFront),
 #endif
         0.0, // temp. Going to be for per pixel depth of imposters
         FRAGMENT_FRONTFACE
         );
+
 #if !defined( D_ATTRIBUTES )
     if( lOutColours0Vec4.a < ( 1.0 / 255.0 ) )
     {
@@ -1059,8 +1066,21 @@ FRAGMENT_MAIN_COLOUR_SRT
         discard;
     }
     
+
+
     FRAGMENT_COLOUR  = lOutColours0Vec4;
 #else
+
+#ifdef _F63_DISSOLVE
+
+    if( lDissolveEdge <= 1.0f )
+    {
+        lOutColours0Vec4 = mix( lOutColours0Vec4, vec4( 1.0, 1.0, 1.0, 1.0 ), clamp( lDissolveEdge, 0.0f, 1.0f ) );
+
+        liMaterialID |= D_UNLIT;
+        lOutColours3Vec4.r = float( liMaterialID ) / 255.0f;
+    }
+#endif
 
     #ifdef D_DEFERRED_DECAL
     {
@@ -1072,12 +1092,12 @@ FRAGMENT_MAIN_COLOUR_SRT
         }
         #else
         {
-            FRAGMENT_COLOUR0 = vec4(0.0); // Discard Colour
+            FRAGMENT_COLOUR0 = float2vec4(0.0); // Discard Colour
         }
         #endif
 
         //FRAGMENT_COLOUR1 = lOutColours1Vec4;
-        FRAGMENT_COLOUR1 = vec4(0.0);
+        FRAGMENT_COLOUR1 = float2vec4(0.0);
         
         #ifdef _F03_NORMALMAP
         {
@@ -1085,7 +1105,7 @@ FRAGMENT_MAIN_COLOUR_SRT
         }
         #else
         {
-            FRAGMENT_COLOUR2 = vec4(0.0); // Discard Colour
+            FRAGMENT_COLOUR2 = float2vec4(0.0); // Discard Colour
         }
         #endif
 

@@ -4,101 +4,110 @@
 
 sampler gDiffuseMap = sampler_state
 {
-	TexUnit = 0;
+    TexUnit = 0;
 };
-
-//sampler gCubeMap = sampler_state
-//{
-//	TexUnit = 1;
-//};
-
-//sampler gAmbientMap = sampler_state
-//{
-//	TexUnit = 2;
-//};
 
 sampler gNormalMap = sampler_state
 {
-	TexUnit = 3;
-};
-
-sampler gDiffuse2Map = sampler_state
-{
-	TexUnit = 4;
-};
-
-//sampler gRefractionMap = sampler_state
-//{
-//	TexUnit = 5;
-//};
-
-sampler gMasksMap = sampler_state
-{
-	TexUnit = 6;
-};
-
-sampler gDetailDiffuseMap = sampler_state
-{
-	TexUnit = 7;
-};
-
-sampler gDetailNormalMap = sampler_state
-{
-	TexUnit = 8;
-};
-
-sampler gDualPMapFront = sampler_state
-{
-	TexUnit = 9;
-};
-
-sampler gDualPMapBack = sampler_state
-{
-	TexUnit = 10;
-};
-
-sampler gCausticMap = sampler_state
-{
-    Address = Wrap;
     TexUnit = 1;
 };
 
 
-sampler gCausticOffsetMap = sampler_state
+sampler gDetailDiffuseMap = sampler_state
 {
-    Address = Wrap;
     TexUnit = 2;
 };
 
-sampler gFadeNoiseMap = sampler_state
+sampler gDetailNormalMap = sampler_state
 {
-	DefaultTexture = SHADER/FADENOISE.DDS;
-	TexUnit = 13;
-    Address = Wrap;
+    TexUnit = 3;
 };
 
-sampler gCloudShadowMap = sampler_state
+sampler gDiffuse2Map = sampler_state
 {
-	TexUnit = 14;
+    TexUnit = 4;
+};
+
+sampler gMasksMap = sampler_state
+{
+    TexUnit = 5;
+};
+
+sampler gCausticMap = sampler_state
+{
+    TexUnit = 6;
+};
+
+sampler gCausticOffsetMap = sampler_state
+{
+    TexUnit = 7;
 };
 
 sampler gShadowMap = sampler_state
 {
-	TexUnit = 15;
+    TexUnit = 8;
+};
+
+sampler gCloudShadowMap = sampler_state
+{
+    TexUnit = 9;
+};
+
+sampler gDualPMapFront = sampler_state
+{
+    TexUnit = 10;
+};
+
+sampler gDualPMapBack = sampler_state
+{
+    TexUnit = 11;
+};
+
+sampler gHSVOverlay = sampler_state
+{
+    DefaultTexture = SHADER/MACROVARIATION.DDS;
+    TexUnit = 12;
+    Address = Wrap;
+};
+
+sampler gHSVNormalOverlay = sampler_state
+{
+    DefaultTexture = SHADER/MACROVARIATION.NORMAL.DDS;
+    TexUnit = 13;
+    Address = Wrap;
 };
 
 sampler gNoiseMap = sampler_state
 {
     DefaultTexture = SHADER/CLOUDNOISE.DDS;
-    TexUnit = 16;
+    TexUnit = 14;
     Address = Wrap;
 };
 
 sampler gPerlin3D = sampler_state
 {
     DefaultTexture = SHADER/NOISEHALF.DDS;
-    TexUnit = 17;
+    TexUnit = 15;
     Address = Wrap;
+};
+
+sampler gFadeNoiseMap = sampler_state
+{
+    DefaultTexture = SHADER/BLUENOISE.DDS;
+    TexUnit = 16;
+    Address = Wrap;
+};
+
+sampler gDepthBuffer = sampler_state
+{
+    Address = Clamp;
+    TexUnit = 17;
+};
+
+sampler gBufferMap = sampler_state
+{
+    Address = Clamp;
+    TexUnit = 18;
 };
 
 
@@ -106,8 +115,9 @@ sampler gPerlin3D = sampler_state
 // Uniforms
 
 // Planet
-float4 gPlanetPositionVec4				= {0.0, -1204.0, 0.0, 1204.0};
+float4 gPlanetPositionVec4              = {0.0, -1204.0, 0.0, 1204.0};
 float4 gLightOriginVec4                 = {0.0, 0.0, 0.0, 0.0}; 
+float4 gInverseWorldUpMat4              = {0.0, 0.0, 0.0, 0.0};
 
 // Lighting
 float4 gMaterialParamsVec4              = {0.9, 0.5, 0.0, 0.5};
@@ -134,8 +144,8 @@ float4 gWaveTwoFallOffAndSpeedVec4      = {0.0, 0.0, 0.0, 0.0};
 float4 gSkyColourVec4                   = {1.0, 0.0, 1.0, 0.0};
 float4 gHorizonColourVec4               = {1.0, 0.0, 1.0, 0.0};
 float4 gSunColourVec4                   = {1.0, 0.0, 1.0, 0.0};
-float4 gWaterColourNearVec4             = {1.0, 0.0, 1.0, 0.0};
-float4 gWaterColourFarVec4              = {1.0, 0.0, 1.0, 0.0};
+float4 gWaterFogColourNearVec4          = {1.0, 0.0, 1.0, 0.0};
+float4 gWaterFogColourFarVec4           = {1.0, 0.0, 1.0, 0.0};
 float4 gWaterFogVec4                    = {1.0, 0.0, 1.0, 0.0};
 float4 gFogColourVec4                   = {1.0, 0.0, 1.0, 0.0};
 float4 gSpaceHorizonColourVec4          = {1.0, 0.0, 1.0, 0.0};
@@ -147,7 +157,7 @@ float4 gSpaceFogParamsVec4              = {1.0, 0.0, 1.0, 0.0};
 float4 gSpaceSkyColourVec4              = {1.0, 0.0, 1.0, 0.0};
 float4 gSunPositionVec4                 = {1.0, 0.0, 1.0, 0.0};
 float4 gSpaceScatteringParamsVec4       = {1.0, 0.0, 1.0, 0.0};
-
+float4 gLightTopColourVec4              = {1.0, 1.0, 1.0, 1.0};
 float4 gPlaneSpotPositionVec4           = {0.0, 0.0, 0.0, 0.0};
 
 // Scan
@@ -168,12 +178,10 @@ float4 gTerrainColour2Vec4;
 
 float4 gUserDataVec4                    = {0.0, 0.0, 0.0, 0.0};
 
+// Dissolve
+float4 gDissolveDataVec4                = { 0.0, 0.0, 0.0, 0.0 };
+
 // Contexts
-context SHADOW
-{
-	VertexShader = compile GLSL VS_SHADOW;
-	PixelShader  = compile GLSL FS_SHADOW;
-}
 
 context SHADOW_FADE
 {
@@ -183,8 +191,8 @@ context SHADOW_FADE
 
 context LIT_FORWARD
 {
-	VertexShader = compile GLSL VS_GENERAL;
-	PixelShader  = compile GLSL FS_LIT_FORWARD;
+    VertexShader = compile GLSL VS_GENERAL;
+    PixelShader  = compile GLSL FS_LIT_FORWARD;
 }
 
 context ICON_FORWARD_NS
@@ -195,25 +203,15 @@ context ICON_FORWARD_NS
 
 context LIT_DEFER
 {
-	VertexShader = compile GLSL VS_DEFER;
-	PixelShader  = compile GLSL FS_LIT_DEFER;
+    VertexShader = compile GLSL VS_DEFER;
+    PixelShader  = compile GLSL FS_LIT_DEFER;
 }
 
 context DEPTH_CLEAR
 {
-	VertexShader = compile GLSL VS_DEFER;
-	PixelShader  = compile GLSL FS_DEPTH_CLEAR;
+    VertexShader = compile GLSL VS_DEPTH_CLEAR;
+    PixelShader  = compile GLSL FS_DEPTH_CLEAR;
 }
-
-
-context SHADOW_INSTANCE
-{
-	VertexShader = compile GLSL VS_SHADOW_INSTANCE;
-	PixelShader  = compile GLSL FS_SHADOW_INSTANCE;
-
-	Instanced = true;
-}
-
 context SHADOW_INSTANCE_FADE
 {
     VertexShader = compile GLSL VS_SHADOW_INSTANCE_FADE;
@@ -224,18 +222,26 @@ context SHADOW_INSTANCE_FADE
 
 context LIT_FORWARD_INSTANCE
 {
-	VertexShader = compile GLSL VS_INSTANCE;
-	PixelShader  = compile GLSL FS_LIT_FORWARD_INSTANCE;
+    VertexShader = compile GLSL VS_INSTANCE;
+    PixelShader  = compile GLSL FS_LIT_FORWARD_INSTANCE;
 
-	Instanced = true;
+    Instanced = true;
 }
 
 context LIT_DEFER_INSTANCE
 {
-	VertexShader = compile GLSL VS_DEFER_INSTANCE;
-	PixelShader  = compile GLSL FS_LIT_DEFER_INSTANCE;
+    VertexShader = compile GLSL VS_DEFER_INSTANCE;
+    PixelShader  = compile GLSL FS_LIT_DEFER_INSTANCE;
 
-	Instanced = true;
+    Instanced = true;
+}
+
+context LIT_DEFER_ZE_INSTANCE
+{
+    VertexShader = compile GLSL VS_DEFER_ZE_INSTANCE;
+    PixelShader  = compile GLSL FS_LIT_DEFER_ZE_INSTANCE;
+
+    Instanced = true;
 }
 
 context DEPTHONLY_DEFER_INSTANCE
@@ -249,25 +255,25 @@ context DEPTHONLY_DEFER_INSTANCE
 context IMPOSTER_COLOUR
 {
     VertexShader = compile GLSL VS_DEFER_IMPOSTER;
-	PixelShader  = compile GLSL FS_IMPOSTER_COLOUR;
+    PixelShader  = compile GLSL FS_IMPOSTER_COLOUR;
 }
 
 context IMPOSTER_NORMAL
 {
     VertexShader = compile GLSL VS_DEFER_IMPOSTER;
-	PixelShader  = compile GLSL FS_IMPOSTER_NORMAL;
+    PixelShader  = compile GLSL FS_IMPOSTER_NORMAL;
 }
 
 context IMPOSTER_MASK
 {
     VertexShader = compile GLSL VS_DEFER_IMPOSTER;
-	PixelShader  = compile GLSL FS_IMPOSTER_MASK;
+    PixelShader  = compile GLSL FS_IMPOSTER_MASK;
 }
 
 context PLANESPOT
 {
-    VertexShader = compile GLSL VS_GENERAL;
-	PixelShader  = compile GLSL FS_PLANE_SPOT;
+    VertexShader = compile GLSL VS_PLANE_SPOT;
+    PixelShader  = compile GLSL FS_PLANE_SPOT;
 }
 
 
@@ -278,6 +284,11 @@ context PLANESPOT
 [[VS_GENERAL_NS]]
 // =================================================================================================
 #define D_NO_SHADOWS
+#include "Hax/HaxVertex.shader.h"
+
+[[VS_PLANE_SPOT]]
+// =================================================================================================
+#define D_PLANE_SPOT
 #include "Hax/HaxVertex.shader.h"
 
 [[VS_DEFER]]
@@ -301,6 +312,7 @@ context PLANESPOT
 // =================================================================================================
 #define D_NO_SHADOWS
 #define D_NO_POSTPROCESS
+#define D_NO_GLOW
 #include "Hax/HaxFragment.shader.h"
 
 [[FS_LIT_DEFER]]
@@ -312,19 +324,17 @@ context PLANESPOT
 #include "Hax/HaxFragment.shader.h"
 
 
-[[FS_DEPTH_CLEAR]]
+[[VS_DEPTH_CLEAR]]
 // =================================================================================================
 #define D_DEFER
 #define D_DEPTH_CLEAR
 #include "Hax/HaxFragment.shader.h"
 
-[[VS_SHADOW]]
+[[FS_DEPTH_CLEAR]]
 // =================================================================================================
-#include "ShadowVertex.shader.h"
-
-[[FS_SHADOW]]
-// =================================================================================================
-#include "ShadowFragment.shader.h"
+#define D_DEFER
+#define D_DEPTH_CLEAR
+#include "Hax/HaxFragment.shader.h"
 
 [[VS_SHADOW_INSTANCE]]
 // =================================================================================================
@@ -367,6 +377,14 @@ context PLANESPOT
 #define D_OUTPUT_MOTION_VECTORS
 #include "Hax/HaxVertex.shader.h"
 
+[[VS_DEFER_ZE_INSTANCE]]
+// =================================================================================================
+#define D_DEFER
+#define D_INSTANCE
+#define D_OUTPUT_MOTION_VECTORS
+#define D_ZEQUALS
+#include "Hax/HaxVertex.shader.h"
+
 [[VS_DEPTHONLY_DEFER_INSTANCE]]
 // =================================================================================================
 #define D_DEFER
@@ -390,6 +408,15 @@ context PLANESPOT
 #define D_DEFER
 #define D_ATTRIBUTES
 #define D_OUTPUT_MOTION_VECTORS
+#include "Hax/HaxFragment.shader.h"
+
+[[FS_LIT_DEFER_ZE_INSTANCE]]
+// =================================================================================================
+#define D_INSTANCE
+#define D_DEFER
+#define D_ATTRIBUTES
+#define D_OUTPUT_MOTION_VECTORS
+#define D_ZEQUALS
 #include "Hax/HaxFragment.shader.h"
 
 [[FS_DEPTHONLY_DEFER_INSTANCE]]
