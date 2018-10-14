@@ -195,6 +195,12 @@ context LIT_FORWARD
     PixelShader  = compile GLSL FS_LIT_FORWARD;
 }
 
+context LIT_FORWARD_WITH_MASK
+{
+    VertexShader = compile GLSL VS_GENERAL;
+    PixelShader  = compile GLSL FS_LIT_FORWARD_WITH_MASK;
+}
+
 context ICON_FORWARD_NS
 {
     VertexShader = compile GLSL VS_GENERAL_NS;
@@ -308,6 +314,11 @@ context PLANESPOT
 // =================================================================================================
 #include "Hax/HaxFragment.shader.h"
 
+[[FS_LIT_FORWARD_WITH_MASK]]
+// =================================================================================================
+#define D_LIT_WITH_MASK
+#include "Hax/HaxFragment.shader.h"
+
 [[FS_ICON_FORWARD_NS]]
 // =================================================================================================
 #define D_NO_SHADOWS
@@ -322,7 +333,6 @@ context PLANESPOT
 #define D_OUTPUT_MOTION_VECTORS
 
 #include "Hax/HaxFragment.shader.h"
-
 
 [[VS_DEPTH_CLEAR]]
 // =================================================================================================

@@ -215,7 +215,7 @@ VERTEX_MAIN_SRT
 
     lLocalPositionVec4   = IN( mkLocalPositionVec4 );
     lPrevLocalPositionVec4 = lLocalPositionVec4;
-    lLocalNormalVec3     = fix_normal( IN( mkLocalNormalVec4 ).xyz );
+    lLocalNormalVec3     = fix_normal(IN( mkLocalNormalVec4 ).xyz);
     
     #ifdef D_DECLARE_TANGENT
     {
@@ -605,9 +605,9 @@ VERTEX_MAIN_SRT
         {
             lFlippedScrollingUVVec4 = lUniforms.mpCustomPerMesh->gUVScrollStepVec4;
 
-            float lfTime	= lUniforms.mpPerFrame->gfTime;
-            float lfStepMul = min( int( ( 1.0f / lFlippedScrollingUVVec4.x ) * ( 1.0f / lFlippedScrollingUVVec4.y ) ), 10000.0f );			
-            float lfFrameNumber = ( sign( lFlippedScrollingUVVec4.w ) * floor( lFlippedScrollingUVVec4.w ) ) + ( ( 1.0f - sign( lFlippedScrollingUVVec4.w ) ) * mod( floor( lfTime * lFlippedScrollingUVVec4.z ), lfStepMul ) );
+			float lfTime	= lUniforms.mpPerFrame->gfTime;
+			float lfStepMul = min( int( ( 1.0f / lFlippedScrollingUVVec4.x ) * ( 1.0f / lFlippedScrollingUVVec4.y ) ), 10000.0f );			
+			float lfFrameNumber = ( sign( lFlippedScrollingUVVec4.w ) * floor( lFlippedScrollingUVVec4.w ) ) + ( ( 1.0f - sign( lFlippedScrollingUVVec4.w ) ) * mod( floor( lfTime * lFlippedScrollingUVVec4.z ), lfStepMul ) );
 
             lTexCoordsVec4.x += fract( lfFrameNumber * lFlippedScrollingUVVec4.x );
             lTexCoordsVec4.y += fract( lfFrameNumber * lFlippedScrollingUVVec4.y );
@@ -616,31 +616,21 @@ VERTEX_MAIN_SRT
         }
         #elif defined( _F14_UVSCROLL )
         {
-            lFlippedScrollingUVVec4 = lUniforms.mpCustomPerMesh->gUVScrollStepVec4;
+            vec4 uvScroll = lUniforms.mpCustomPerMesh->gUVScrollStepVec4;
+            uvScroll.xy *= lUniforms.mpCustomPerMesh->gUVScrollStepVec4.zw;
 
-            #if defined( D_OUTPUT_MOTION_VECTORS ) && !defined( _F18_UVTILES )
-                lPrevTexCoordsVec4 = lTexCoordsVec4 + lFlippedScrollingUVVec4 * lUniforms.mpPerFrame->gfPrevTime;
-            #endif
-
+            vec4 uvTile = vec4(1);
             #ifdef _F18_UVTILES
-                //bodge to make tiling based on position work for objects that are scaled differently without relying on world position
-                vec2 lWorldPosVec2 = lWorldMat4[3].xz - lUniforms.mpCommonPerMesh->gPlanetPositionVec4.xz;
-                
-                #ifdef _F12_BATCHED_BILLBOARD
-                    lWorldPosVec2 += IN( mkLocalPositionVec4 ).xz -  vec2( lTexCoordsVec4.x - 0.5,  0.0 );
-                #endif
-
-                // Divide the x pos down because in batched billboards this has some slight inaccuracies
-                float lfPos = lWorldPosVec2.x / 8.0 + lWorldPosVec2.y * 10.0;
-
-                lTexCoordsVec4.x /= lUniforms.mpCustomPerMesh->gUVTileRepeatVec4.x;
-                lTexCoordsVec4.y /= lUniforms.mpCustomPerMesh->gUVTileRepeatVec4.y;
-
-                lTexCoordsVec4.x += floor( mod( lfPos, lUniforms.mpCustomPerMesh->gUVTileRepeatVec4.x ) ) / lUniforms.mpCustomPerMesh->gUVTileRepeatVec4.x;
-                lTexCoordsVec4.y += floor( mod( lfPos, lUniforms.mpCustomPerMesh->gUVTileRepeatVec4.y ) ) / lUniforms.mpCustomPerMesh->gUVTileRepeatVec4.y;
+                uvTile = lUniforms.mpCustomPerMesh->gUVTileRepeatVec4;
             #endif
 
-            lTexCoordsVec4 += lFlippedScrollingUVVec4 * lUniforms.mpPerFrame->gfTime;
+            lTexCoordsVec4 += uvScroll * lUniforms.mpPerFrame->gfTime;
+            lTexCoordsVec4 *= uvTile;
+
+            #if defined( D_OUTPUT_MOTION_VECTORS )
+                lPrevTexCoordsVec4 = lTexCoordsVec4 + uvScroll * lUniforms.mpPerFrame->gfPrevTime;
+                lPrevTexCoordsVec4 *= uvTile;
+            #endif
         }
         #elif defined( _F18_UVTILES )
         {
@@ -661,6 +651,8 @@ VERTEX_MAIN_SRT
             lTexCoordsVec4.x += floor( mod( lfPos, lUniforms.mpCustomPerMesh->gUVScrollStepVec4.z ) ) / lUniforms.mpCustomPerMesh->gUVScrollStepVec4.z;
 
             lTexCoordsVec4.y += floor( mod( lfPos, lUniforms.mpCustomPerMesh->gUVScrollStepVec4.w ) ) / lUniforms.mpCustomPerMesh->gUVScrollStepVec4.w;
+            
+
         }        
         #endif
 

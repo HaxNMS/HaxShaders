@@ -10,6 +10,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Common/Defines.shader.h"
+
 // Griff - working around SDK5 shader compiler bug with billboard/displacement vertex positions
 #if defined( D_PLATFORM_ORBIS ) && defined( D_VERTEX )
 #if defined( _F12_BATCHED_BILLBOARD ) || defined(_F31_DISPLACEMENT)
@@ -114,6 +116,7 @@ struct CustomPerMeshUniforms
 #else
     vec4 gCustomParams02Vec4;
     vec4 gObjectColourVec4;
+
 #endif
 
 #endif   

@@ -24,11 +24,11 @@
 
 #include "Hax/HaxCommon.h"
 
-#include "Common/Noise3d.glsl"
+//#include "Common/Noise3d.glsl"
 #include "Common/Common.shader.h"
 #include "Common/CommonFragment.shader.h"
 #include "Common/CommonDepth.shader.h"
-#include "Common/CommonNoise.shader.h"
+//#include "Common/CommonNoise.shader.h"
 #if defined( D_DEFER ) 
 #include "Common/CommonGBuffer.shader.h"
 #else
@@ -341,7 +341,7 @@ FRAGMENT_MAIN_COLOUR_SRT
     ///     Fading
     ///
     //-----------------------------------------------------------------------------
-    #if defined( D_FADE ) 
+    #if  defined( D_FADE ) 
     {   
         #if defined( _F44_IMPOSTER )
         vec4 lTexCoords = IN( mTexCoordsVec4 ) * lUniforms.mpCustomPerMaterial->gImposterDataVec4.x;
@@ -393,8 +393,8 @@ FRAGMENT_MAIN_COLOUR_SRT
 #endif
 
     vec4  lPrevScreenPosition = vec4( 0.0, 0.0, 0.0, 0.0 );
-    float lLowAlpha   = 1.0;
-    float lHighAlpha  = 1.0;
+    float lLowAlpha           = 1.0;
+    float lHighAlpha          = 1.0;
 
     #ifdef _F55_MULTITEXTURE
     // {
@@ -474,7 +474,7 @@ FRAGMENT_MAIN_COLOUR_SRT
     #if defined( _F53_COLOURISABLE ) || defined( _F63_ )
     {
         vec4 lUserDataVec4 = lUniforms.mpCommonPerMesh->gUserDataVec4; // dynamic
-        #ifdef _F63_
+        #if 0 //def _F63_
             lUserDataVec4 = lUniforms.mpCustomPerMesh->gRecolouriseVec4; // static
         #endif
         
@@ -794,20 +794,20 @@ FRAGMENT_MAIN_COLOUR_SRT
 
         #if defined( _F36_DOUBLESIDED )
 
-            #ifdef _F18_UVTILES // Tree with flat leaves which use multiple textures have different lighting
-                lTangentSpaceMat[ 1 ] = cross( lFaceNormalVec3, lTangentSpaceMat[ 0 ] ) * IN( mWorldPositionVec3_mfSpare ).w;
-                lTangentSpaceMat[ 2 ] = lFaceNormalVec3;
-            #else
+        #ifdef _F18_UVTILES // Tree with flat leaves which use multiple textures have different lighting
+            lTangentSpaceMat[ 1 ] = cross( lFaceNormalVec3, lTangentSpaceMat[ 0 ] ) * IN( mWorldPositionVec3_mfSpare ).w;
+            lTangentSpaceMat[ 2 ] = lFaceNormalVec3;
+        #else
 
-                vec3 lEyeVec3 = normalize( lUniforms.mpPerFrame->gViewPositionVec3 - lWorldPositionVec3 );
+            vec3 lEyeVec3 = normalize( lUniforms.mpPerFrame->gViewPositionVec3 - lWorldPositionVec3 );
 
-                mat3 lCotangentMat = GetCotangentFrame( lWorldPositionVec3, lUniforms.mpPerFrame->gViewPositionVec3, lTexCoordsVec4.xy );
+            mat3 lCotangentMat = GetCotangentFrame( lWorldPositionVec3, lUniforms.mpPerFrame->gViewPositionVec3, lTexCoordsVec4.xy );
 
-                if( dot( IN( mTangentSpaceNormalVec3 ), lEyeVec3 ) < 0.0 )
-                {
-                    lTangentSpaceMat = lCotangentMat;
-                }
-            #endif
+            if( dot( IN( mTangentSpaceNormalVec3 ), lEyeVec3 ) < 0.0 )
+            {
+                lTangentSpaceMat = lCotangentMat;
+            }
+        #endif
 
         #endif
 
@@ -1058,16 +1058,19 @@ FRAGMENT_MAIN_COLOUR_SRT
         FRAGMENT_FRONTFACE
         );
 
-#if !defined( D_ATTRIBUTES )
-    if( lOutColours0Vec4.a < ( 1.0 / 255.0 ) )
+#if defined( D_LIT_WITH_MASK )
+    {
+        float lfAlpha = saturate( ( ( DEREF_PTR( lUniforms.mpCustomPerMaterial ) ).gMaterialSFXColVec4.a * 2.0f ) );
+        FRAGMENT_COLOUR0 = lOutColours0Vec4;
+        FRAGMENT_COLOUR1 = vec4( lfAlpha, 0.0, 0.0, 1.0 );
+    }
+#elif !defined( D_ATTRIBUTES )    
+    if ( lOutColours0Vec4.a < ( 1.0 / 255.0 ) )
     {
         // this pixel will have no effect on the framebuffer -
         // don't write the stencil buffer plz
         discard;
     }
-    
-
-
     FRAGMENT_COLOUR  = lOutColours0Vec4;
 #else
 
